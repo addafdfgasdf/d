@@ -27,7 +27,7 @@ local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"]:Fi
 
 -- Список всех возможных яиц
 local eggNames = {
-    "Nasty Egg"
+    "Nasty Egg", "Raffie Egg", "SigmaBloxian Egg", "Turd Egg"
 }
 
 -- Функция для проверки, содержит ли имя NPC запрещенную подстроку
