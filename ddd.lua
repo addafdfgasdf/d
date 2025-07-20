@@ -8,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 -- === Настройки ===
 local isSearching = false
+local autoAttackEnabled = true
 local HEIGHT_OFFSET = 3
 local EGG_SPEED = 50
 local NPC_TELEPORT_DELAY = 0.3
@@ -296,7 +297,9 @@ local function mainLoop()
     while isSearching do
         local success, err = pcall(function()
             if not collectEggs() then
-                attackNPCs()
+                if autoAttackEnabled then
+                    attackNPCs()
+                end
             end
         end)
         if not success then
@@ -328,6 +331,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             disableNoclip()
             print("NoClip выключен")
         end
+    elseif input.KeyCode == Enum.KeyCode.O then
+        autoAttackEnabled = not autoAttackEnabled
+        print(autoAttackEnabled and "Автоатака включена" or "Автоатака выключена")
     end
 end)
 
@@ -450,15 +456,15 @@ EquipTool()
 print("🛠 [Auto-Equip] Готово! Нажми Y для включения/выключения.")
 
 -- === Anti-AFK ===
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ArgetnarYT/scripts/main/AntiAfk2.lua   "))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ArgetnarYT/scripts/main/AntiAfk2.lua "))()
 
 -- === Включение NoClip при запуске ===
-
 enableNoclip()
 print("Постоянный NoClip активирован (включен по умолчанию)")
 print("Нажмите N для отключения NoClip")
 print("Скорость полёта к яйцам: " .. EGG_SPEED)
 print("Автопоиск и атака: Нажмите P для старта/остановки")
+print("Нажмите O для включения/выключения автоатаки")
 
 wait(1)
 
