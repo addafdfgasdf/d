@@ -394,48 +394,57 @@ local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
-local TOGGLE_KEY = Enum.KeyCode.Y -- Клавиша для отключения
-local TOOL_NAME = "King Slayer" -- Название инструмента (можешь поменять)
+local TOGGLE_KEY = Enum.KeyCode.Y -- Клавиша для включения/выключения
+local TOOL_PRIORITY = {
+    "Pine Tree",       -- Высший приоритет
+    "Turd Maus",       -- Второй по важности
+    "King Slayer",     -- Средний приоритет
+    "M1 Abrams",       -- Резервный
+}
 
 local isRunning = true
 
--- Функция для поиска и экипировки инструмента
+-- Функция для поиска и экипировки инструмента по приоритету
 local function EquipTool()
     if not isRunning then return end
-    
+
     local Character = Player.Character or Player.CharacterAdded:Wait()
     local Backpack = Player:FindFirstChildOfClass("Backpack")
     local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-    
+
     if not Backpack or not Humanoid then return end
 
-    -- Ищем инструмент в инвентаре
-    local Tool = Backpack:FindFirstChild(TOOL_NAME) or Character:FindFirstChild(TOOL_NAME)
-    
-    -- Если нашли - экипируем
-    if Tool and not Character:FindFirstChild(Tool.Name) then
-        Humanoid:EquipTool(Tool)
-        print("🔹 [Auto-Equip] Взят: " .. TOOL_NAME)
+    -- Перебираем инструменты по приоритету
+    for _, toolName in ipairs(TOOL_PRIORITY) do
+        local Tool = Backpack:FindFirstChild(toolName) or Character:FindFirstChild(toolName)
+
+        if Tool and Tool:IsA("Tool") then
+            if not Character:FindFirstChild(Tool.Name) then
+                Humanoid:EquipTool(Tool)
+                print("🔹 [Auto-Equip] Взят: " .. Tool.Name)
+            end
+            return -- Берём первый найденный подходящий инструмент и выходим
+        end
     end
 end
 
--- Отслеживаем смерть/респавн
+-- Обработка респавна
 Player.CharacterAdded:Connect(function()
-    task.wait(2) -- Ждём загрузку
+    task.wait(2) -- Даем время загрузиться
     if isRunning then
         EquipTool()
     end
 end)
 
--- Проверяем инвентарь каждую секунду
+-- Проверяем инвентарь каждые 1.5 секунды
 RunService.Heartbeat:Connect(function()
     if isRunning then
         EquipTool()
-        task.wait(1) -- Задержка, чтобы не грузить игру
+        task.wait(1.5)
     end
 end)
 
--- Включение/выключение на "T"
+-- Включение/выключение по клавише Y
 UIS.InputBegan:Connect(function(Input, _)
     if Input.KeyCode == TOGGLE_KEY then
         isRunning = not isRunning
@@ -445,7 +454,7 @@ end)
 
 -- Первый запуск
 EquipTool()
-print("🛠 [Auto-Equip] Готово! Нажми T для отключения.")
+print("🛠 [Auto-Equip] Готово! Нажми Y для включения/выключения.")
 
 wait(1)
 
