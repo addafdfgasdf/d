@@ -25,7 +25,7 @@ local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"]:Fi
 
 -- === Яйца ===
 local eggNames = {
-    "Nasty Egg"
+    "Nasty Egg", "Amethyst Egg", "Ruby Egg", "Emerald Egg"
 }
 
 -- === Скорость ===
