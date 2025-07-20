@@ -8,7 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 -- === Настройки ===
 local isSearching = false
-local autoAttackEnabled = true
+local autoAttackEnabled = false
 local HEIGHT_OFFSET = 3
 local EGG_SPEED = 50
 local NPC_TELEPORT_DELAY = 0.3
