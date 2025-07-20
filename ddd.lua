@@ -27,12 +27,11 @@ local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"].Fo
 -- === Приоритеты яиц ===
 local EGG_PRIORITY_GROUPS = {
     -- Группа 1 (высший приоритет)
-    {
-        "Amethyst Egg", "Ruby Egg", "Emerald Egg"
+    {"Amethyst Egg", "Ruby Egg", "Emerald Egg", "BULL Egg", "BULLKER Egg", "Banana Egg", "Bananade Egg", "Berend Egg", "Big Egg", "Boeman Egg", "Bombardier Egg", "Bunny Egg", "Buoyant Egg", "Cheese Egg", "Chicken Egg", "Delicious Egg", "Elf Egg", "Flying Egg", "Fur Egg", "Ginger Egg", "Headless Egg", "Jack Egg", "Jumperino Egg", "Mighty Egg", "Moai Egg", "Monster Egg", "Noob Egg", "OOOOOMEGA EGG", "Old Egg", "Party Egg", "Pouwk Egg", "Pouwker Egg", "Primo Egg", "Raffle Egg", "Santa Egg", "Skeleton Egg", "Werewolf Egg", "Yoss Egg", "BOSS Egg", "Baby Egg", "Bas Egg", "Basic Egg", "Bigger Egg", "Biggest Egg", "Biggest Bigger Egg", "Biggestest Egg", "Bomb Egg", "Burnt Egg", "Co Egg", "Cracked Egg", "Dark Egg", "Diamond Egg", "Enraged Egg", "Error Egg", "Fat Egg", "Fatter Egg", "Fattest Egg", "Ghost Egg", "Golden Egg", "Greasy Egg", "Happy Egg", "Hateful Egg", "Hellfire Egg", "Invincible Egg", "Invisible Egg", "Mega Egg", "Metal Egg", "Micro Egg", "Nano Egg", "Nasty Egg", "Not Egg", "Nuke Egg", "Paper Egg", "Poop Egg", "R6 Egg", "Rock Egg", "Rotten Egg", "Rusty Egg", "SigmaBloxian Egg", "Silver Egg", "Skinny Egg", "Small Egg", "Smaller Egg", "Smallest Egg", "Squashed Egg", "Squished Egg", "Stinky Egg", "Tall Egg", "Taller Egg", "Tallest Egg", "Turd Egg", "Wide Egg", "Zombie Egg"
     },
     -- Группа 2 (средний приоритет)
     {
-        "Nasty Egg", "SigmaBloxian Egg", "Raffie Egg", "Diamond Egg"
+        "gandon Egg"
     },
     -- Группа 3 (низкий приоритет, по желанию)
     {
