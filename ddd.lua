@@ -396,7 +396,7 @@ local RunService = game:GetService("RunService")
 
 local TOGGLE_KEY = Enum.KeyCode.Y -- Клавиша для включения/выключения
 local TOOL_PRIORITY = {
-    "Turd Maus",       -- Высший приоритет
+    "Maus",       -- Высший приоритет
     "M1 Abrams",       -- Второй по важности
     "Pine Tree",     -- Средний приоритет
     "King Slayer",       -- Резервный
