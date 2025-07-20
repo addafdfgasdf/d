@@ -1,66 +1,91 @@
+-- === ОСНОВНЫЕ СЕРВИСЫ ===
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
--- Настройки
-local isSearching = false
-local HEIGHT_OFFSET = 3
-local EGG_SPEED = 50 -- Скорость полёта к яйцам (будет заменена на скорректированную скорость игрока)
-local NPC_TELEPORT_DELAY = 0.3 -- Задержка между телепортами к NPC
-local BLACKLIST = {"WhiteBas", "CrackedBas", "Flying Noob", "Dead Noob"}
-local AUTO_ATTACK = true -- Включить автоатаку NPC
-local MAX_WAIT_TIME = 15 -- Максимальное время ожидания объектов (секунд)
-
--- NoClip переменные
-local NOCLIP_ENABLED = true
-local noclipConnection = nil
-
--- Пути поиска
-local NPCFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"]:FindFirstChild("Folders") and 
-                 workspace["#GAME"].Folders:FindFirstChild("HumanoidFolder") and 
-                 workspace["#GAME"].Folders.HumanoidFolder:FindFirstChild("NPCFolder")
-local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"]:FindFirstChild("Folders") and 
-                    workspace["#GAME"].Folders:FindFirstChild("DumpFolder") or workspace
-
--- Список всех возможных яиц
-local eggNames = {
-    "Nasty Egg", "SigmaBloxian Egg", "Raffie Egg", "Turd Egg"
+-- === КОНФИГУРАЦИЯ (main_config.txt) ===
+local CONFIG = {
+    -- Основные настройки
+    isSearching = false,
+    HEIGHT_OFFSET = 3,
+    EGG_SPEED = 50,
+    NPC_TELEPORT_DELAY = 0.3,
+    MAX_WAIT_TIME = 15,
+    NOCLIP_ENABLED = true,
+    AUTO_ATTACK = true,
+    
+    -- Черный список NPC
+    BLACKLIST = {"WhiteBas", "CrackedBas", "Flying Noob", "Dead Noob"},
+    
+    -- Список яиц для сбора
+    eggNames = {
+        "Nasty Egg"
+    },
+    
+    -- Приоритет инструментов
+    TOOL_PRIORITY = {
+        "Maus",
+        "M1 Abrams",
+        "Pine Tree",
+        "King Slayer"
+    },
+    
+    -- Клавиши управления
+    CONTROLS = {
+        SEARCH_TOGGLE = Enum.KeyCode.P,
+        NOCLIP_TOGGLE = Enum.KeyCode.N,
+        EQUIP_TOGGLE = Enum.KeyCode.Y,
+        AUTO_ATTACK_TOGGLE = Enum.KeyCode.T
+    },
+    
+    -- Приоритет NPC для атаки
+    PRIORITY_TARGETS = {
+        priority1 = {"Amethyst", "Ruby", "Emerald", "Diamond", "Golden"},
+        priority2 = {"Bull"}
+    }
 }
 
--- Счётчик проверок скорости
+-- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
+local noclipConnection = nil
 local speedCheckCount = 0
 local MAX_SPEED_CHECKS = 3
+local isRunning = true
 
--- === ФУНКЦИЯ ДЛЯ АВТОМАТИЧЕСКОГО ОПРЕДЕЛЕНИЯ СКОРОСТИ ИГРОКА ===
+-- === ИНИЦИАЛИЗАЦИЯ ПУТЕЙ ===
+local gameFolder = Workspace:FindFirstChild("#GAME")
+local foldersFolder = gameFolder and gameFolder:FindFirstChild("Folders")
+local humanoidFolder = foldersFolder and foldersFolder:FindFirstChild("HumanoidFolder")
+local NPCFolder = humanoidFolder and humanoidFolder:FindFirstChild("NPCFolder")
+local targetFolder = (gameFolder and gameFolder:FindFirstChild("Folders") and 
+                     gameFolder.Folders:FindFirstChild("DumpFolder")) or Workspace
+
+-- === ФУНКЦИИ ===
+
+-- === ФУНКЦИИ ДЛЯ НАСТРОЙКИ СКОРОСТИ ===
 local function updateEggSpeed()
     if speedCheckCount >= MAX_SPEED_CHECKS then return end
-
-    local playerHumanoidFolder = workspace["#GAME"] and workspace["#GAME"].Folders and 
-                                 workspace["#GAME"].Folders.HumanoidFolder and 
-                                 workspace["#GAME"].Folders.HumanoidFolder:FindFirstChild("PlayerFolder") and 
-                                 workspace["#GAME"].Folders.HumanoidFolder.PlayerFolder:FindFirstChild(player.Name)
-
+    
+    local playerHumanoidFolder = humanoidFolder and humanoidFolder:FindFirstChild("PlayerFolder") and 
+                                 humanoidFolder.PlayerFolder:FindFirstChild(player.Name)
+    
     if playerHumanoidFolder and playerHumanoidFolder:FindFirstChild("Humanoid") then
         local baseSpeed = playerHumanoidFolder.Humanoid.WalkSpeed
-        EGG_SPEED = math.max(1, baseSpeed - 10) -- Уменьшаем на 10, но не меньше 1
-        speedCheckCount += 1
-        print("[" .. speedCheckCount .. "/" .. MAX_SPEED_CHECKS .. "] Установлена скорость полёта к яйцам: " .. EGG_SPEED)
+        CONFIG.EGG_SPEED = math.max(1, baseSpeed - 10)
+        speedCheckCount = speedCheckCount + 1
+        print("[" .. speedCheckCount .. "/" .. MAX_SPEED_CHECKS .. "] Установлена скорость полёта к яйцам: " .. CONFIG.EGG_SPEED)
     else
         warn("Не удалось найти персонажа игрока для определения скорости")
-        EGG_SPEED = 10 -- Значение по умолчанию, если не найдено
+        CONFIG.EGG_SPEED = 10
     end
 end
 
--- Вызываем функцию один раз при запуске
-updateEggSpeed()
-
--- === ОСТАЛЬНЫЙ КОД С ПРОВЕРКАМИ ===
-
--- Функция для проверки, содержит ли имя NPC запрещенную подстроку
+-- === ПРОВЕРКИ И ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 local function isNPCBlacklisted(npcName)
-    for _, blacklistedName in ipairs(BLACKLIST) do
+    for _, blacklistedName in ipairs(CONFIG.BLACKLIST) do
         if string.find(npcName, blacklistedName) then
             return true
         end
@@ -68,9 +93,45 @@ local function isNPCBlacklisted(npcName)
     return false
 end
 
--- Функция NoClip
+local function getHRP()
+    if not player or not player.Character then
+        warn("Персонаж ещё не загружен. Жду...")
+        local startTime = os.clock()
+        while os.clock() - startTime < CONFIG.MAX_WAIT_TIME do
+            if player and player.Character then
+                break
+            end
+            task.wait(0.1)
+        end
+        if not player or not player.Character then
+            warn("Персонаж так и не загрузился")
+            return nil
+        end
+    end
+    
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        warn("HumanoidRootPart не найден. Жду...")
+        local startTime = os.clock()
+        while os.clock() - startTime < CONFIG.MAX_WAIT_TIME do
+            hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then break end
+            task.wait(0.1)
+        end
+    end
+    
+    if not hrp then
+        warn("HumanoidRootPart не найден после ожидания")
+        return nil
+    end
+    
+    return hrp
+end
+
+-- === NOCLIP ФУНКЦИИ ===
 local function enableNoclip()
     if noclipConnection then noclipConnection:Disconnect() end
+    
     noclipConnection = RunService.Stepped:Connect(function()
         if player.Character then
             for _, part in pairs(player.Character:GetDescendants()) do
@@ -82,12 +143,12 @@ local function enableNoclip()
     end)
 end
 
--- Отключение NoClip
 local function disableNoclip()
     if noclipConnection then
         noclipConnection:Disconnect()
         noclipConnection = nil
     end
+    
     if player.Character then
         for _, part in pairs(player.Character:GetDescendants()) do
             if part:IsA("BasePart") then
@@ -97,133 +158,79 @@ local function disableNoclip()
     end
 end
 
--- Функция для проверки наличия яиц с защитой от ошибок
+-- === ФУНКЦИИ ДЛЯ СБОРА ЯИЦ ===
 local function findEgg(eggName)
     if not targetFolder then return nil end
+    
     local success, egg = pcall(function()
         return targetFolder:FindFirstChild(eggName, false) or
                targetFolder:FindFirstChild(eggName.." Egg", false) or
                targetFolder:FindFirstChild("Egg of "..eggName, false)
     end)
+    
     if success and egg and (egg:IsA("Model") or egg:IsA("BasePart")) then
         return egg
     end
+    
     return nil
 end
 
--- Улучшенная функция для получения HumanoidRootPart с таймаутом
-local function getHRP()
-    if not player or not player.Character then
-        warn("Персонаж ещё не загружен. Жду...")
-        local startTime = os.clock()
-        while os.clock() - startTime < MAX_WAIT_TIME do
-            if player and player.Character then
-                break
-            end
-            task.wait(0.1)
-        end
-        if not player or not player.Character then
-            warn("Персонаж так и не загрузился")
-            return nil
-        end
-    end
-
-    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then
-        warn("HumanoidRootPart не найден. Жду...")
-        local startTime = os.clock()
-        while os.clock() - startTime < MAX_WAIT_TIME do
-            hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then break end
-            task.wait(0.1)
-        end
-    end
-
-    if not hrp then
-        warn("HumanoidRootPart не найден после ожидания")
-        return nil
-    end
-
-    return hrp
-end
-
--- Движение к яйцу через TweenService
 local function moveToEggWithTween(targetPosition)
     local hrp = getHRP()
-    if not hrp then
-        warn("Не удалось получить HumanoidRootPart для перемещения")
-        return nil
-    end
-
-    -- Обновляем EGG_SPEED только первые 3 раза
+    if not hrp then return nil end
+    
     updateEggSpeed()
-
-    -- Вычисляем расстояние и время для Tween
+    
     local distance = (targetPosition - hrp.Position).Magnitude
-    local duration = distance / EGG_SPEED
-
-    -- Создаем Tween
+    local duration = distance / CONFIG.EGG_SPEED
+    
     local tween = TweenService:Create(
         hrp,
         TweenInfo.new(duration, Enum.EasingStyle.Linear),
         {CFrame = CFrame.new(targetPosition, targetPosition + Vector3.new(0, 0, -1))}
     )
-
-    -- Запускаем Tween
+    
     tween:Play()
     return tween
 end
 
--- Телепортация к NPC с проверками
-local function teleportToNPC(npc)
-    if not npc then
-        warn("NPC не найден для телепортации")
-        return
-    end
-    local hrp = getHRP()
-    if not hrp then return end
-    local rootPart = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("UpperTorso")
-    if not rootPart then
-        warn("NPC не содержит HumanoidRootPart или UpperTorso")
-        return
-    end
-    hrp.CFrame = CFrame.new(rootPart.Position + Vector3.new(0, HEIGHT_OFFSET, 0))
-end
-
--- Автоподбор яйца с TweenService
 local function autoCollectEgg(egg)
-    if not egg or not isSearching then return false end
+    if not egg or not CONFIG.isSearching then return false end
+    
     local hrp = getHRP()
     if not hrp then return false end
-
+    
     local prompt
     local success, err = pcall(function()
         prompt = egg:FindFirstChildOfClass("ProximityPrompt") or
                 (egg:IsA("Model") and egg.PrimaryPart and egg.PrimaryPart:FindFirstChildOfClass("ProximityPrompt"))
     end)
+    
     if not success or not prompt then
         warn("Не найден ProximityPrompt у яйца")
         return false
     end
-
+    
     local targetPos
     if egg:IsA("BasePart") then
-        targetPos = egg.Position + Vector3.new(0, HEIGHT_OFFSET, 0)
+        targetPos = egg.Position + Vector3.new(0, CONFIG.HEIGHT_OFFSET, 0)
     elseif egg:IsA("Model") and egg.PrimaryPart then
-        targetPos = egg.PrimaryPart.Position + Vector3.new(0, HEIGHT_OFFSET, 0)
+        targetPos = egg.PrimaryPart.Position + Vector3.new(0, CONFIG.HEIGHT_OFFSET, 0)
     else
         warn("Неверный тип объекта яйца")
         return false
     end
-
+    
     local tween = moveToEggWithTween(targetPos)
     local startTime = os.clock()
     local maxTime = 8
-    while os.clock() - startTime < maxTime and isSearching do
+    
+    while os.clock() - startTime < maxTime and CONFIG.isSearching do
         if not egg or not egg:IsDescendantOf(workspace) then
             tween:Cancel()
             return true
         end
+        
         if (hrp.Position - targetPos).Magnitude < 10 then
             pcall(function()
                 fireproximityprompt(prompt, 3)
@@ -231,36 +238,23 @@ local function autoCollectEgg(egg)
             tween:Cancel()
             return true
         end
+        
         task.wait()
     end
+    
     tween:Cancel()
     return false
 end
 
--- Атака NPC с проверками
-local function attackNPC(npc)
-    if not npc or not isSearching then return end
-    if isNPCBlacklisted(npc.Name) then return end
-    local humanoid = npc:FindFirstChild("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then return end
-    local hrp = getHRP()
-    if not hrp then return end
-    teleportToNPC(npc)
-    local npcRoot = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("UpperTorso")
-    if npcRoot and (hrp.Position - npcRoot.Position).Magnitude < 10 then
-        pcall(function()
-            humanoid:TakeDamage(10)
-        end)
-    end
-end
-
--- Поиск и сбор яиц с защитой от ошибок
 local function collectEggs()
-    if not isSearching then return false end
+    if not CONFIG.isSearching then return false end
+    
     local hrp = getHRP()
     if not hrp then return false end
-    for _, eggName in ipairs(eggNames) do
-        if not isSearching then break end
+    
+    for _, eggName in ipairs(CONFIG.eggNames) do
+        if not CONFIG.isSearching then break end
+        
         local egg = findEgg(eggName)
         if egg then
             if autoCollectEgg(egg) then
@@ -269,75 +263,92 @@ local function collectEggs()
             end
         end
     end
+    
     return false
 end
 
--- Телепортация и атака NPC с проверками
+-- === ФУНКЦИИ ДЛЯ АТАКИ NPC ===
+local function teleportToNPC(npc)
+    if not npc then
+        warn("NPC не найден для телепортации")
+        return
+    end
+    
+    local hrp = getHRP()
+    if not hrp then return end
+    
+    local rootPart = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("UpperTorso")
+    if not rootPart then
+        warn("NPC не содержит HumanoidRootPart или UpperTorso")
+        return
+    end
+    
+    hrp.CFrame = CFrame.new(rootPart.Position + Vector3.new(0, CONFIG.HEIGHT_OFFSET, 0))
+end
+
+local function attackNPC(npc)
+    if not npc or not CONFIG.isSearching then return end
+    if isNPCBlacklisted(npc.Name) then return end
+    
+    local humanoid = npc:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return end
+    
+    local hrp = getHRP()
+    if not hrp then return end
+    
+    teleportToNPC(npc)
+    
+    local npcRoot = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("UpperTorso")
+    if npcRoot and (hrp.Position - npcRoot.Position).Magnitude < 10 then
+        pcall(function()
+            humanoid:TakeDamage(10)
+        end)
+    end
+end
+
 local function attackNPCs()
-    if not AUTO_ATTACK or not isSearching or not NPCFolder then return end
+    if not CONFIG.AUTO_ATTACK or not CONFIG.isSearching or not NPCFolder then return end
+    
     for _, npc in ipairs(NPCFolder:GetChildren()) do
-        if not isSearching then break end
+        if not CONFIG.isSearching then break end
         if isNPCBlacklisted(npc.Name) then continue end
+        
         if npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
             attackNPC(npc)
-            task.wait(NPC_TELEPORT_DELAY)
+            task.wait(CONFIG.NPC_TELEPORT_DELAY)
         end
     end
 end
 
--- Главный цикл с обработкой ошибок
-local function mainLoop()
-    while isSearching do
-        local success, err = pcall(function()
-            if not collectEggs() then
-                attackNPCs()
+-- === ФУНКЦИИ ДЛЯ ЭКИПИРОВКИ ИНСТРУМЕНТОВ ===
+local function EquipTool()
+    if not isRunning then return end
+    
+    local Character = player.Character or player.CharacterAdded:Wait()
+    local Backpack = player:FindFirstChildOfClass("Backpack")
+    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+    
+    if not Backpack or not Humanoid then return end
+    
+    for _, toolName in ipairs(CONFIG.TOOL_PRIORITY) do
+        local Tool = Backpack:FindFirstChild(toolName) or Character:FindFirstChild(toolName)
+        if Tool and Tool:IsA("Tool") then
+            if not Character:FindFirstChild(Tool.Name) then
+                Humanoid:EquipTool(Tool)
+                print("🔹 [Auto-Equip] Взят: " .. Tool.Name)
             end
-        end)
-        if not success then
-            warn("Ошибка в главном цикле: " .. tostring(err))
+            return
         end
-        task.wait(0.1)
     end
 end
 
--- Управление (P для вкл/выкл поиска, N для вкл/выкл NoClip)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.P then
-        isSearching = not isSearching
-        if isSearching then
-            print("Автопоиск и атака активированы. Нажмите P для остановки")
-            task.spawn(mainLoop)
-        else
-            print("Автопоиск и атака остановлены")
-            local hrp = getHRP()
-            if hrp then hrp.Velocity = Vector3.new() end
-        end
-    elseif input.KeyCode == Enum.KeyCode.N then
-        NOCLIP_ENABLED = not NOCLIP_ENABLED
-        if NOCLIP_ENABLED then
-            enableNoclip()
-            print("NoClip включен")
-        else
-            disableNoclip()
-            print("NoClip выключен")
-        end
-    end
-end)
-
--- Включение NoClip при запуске
-enableNoclip()
-print("Постоянный NoClip активирован (включен по умолчанию)")
-print("Нажмите N для отключения NoClip")
-print("Скорость полёта к яйцам: " .. EGG_SPEED)
-print("Автопоиск и атака: Нажмите P для старта/остановки")
-
--- Функция для безопасного удаления объектов
+-- === ФУНКЦИИ ДЛЯ УДАЛЕНИЯ ОБЪЕКТОВ ===
 local function safeDelete(objects, name)
     if not objects then
         warn("Не найдена папка " .. tostring(name))
         return
     end
+    
     for _, obj in pairs(objects:GetDescendants()) do
         if obj.Name == name then
             pcall(function()
@@ -348,17 +359,18 @@ local function safeDelete(objects, name)
     end
 end
 
--- Функция для безопасного удаления комнат
 local function safeDeleteRooms(housePath, roomNames)
     if not housePath then
         warn("Дом не найден!")
         return
     end
+    
     local roomsFolder = housePath:FindFirstChild("Rooms")
     if not roomsFolder then
         warn("Папка 'Rooms' не найдена!")
         return
     end
+    
     for _, roomName in ipairs(roomNames) do
         local room = roomsFolder:FindFirstChild(roomName)
         if room then
@@ -372,88 +384,112 @@ local function safeDeleteRooms(housePath, roomNames)
     end
 end
 
--- Инициализация при запуске
+-- === ОСНОВНОЙ ЦИКЛ ===
+local function mainLoop()
+    while CONFIG.isSearching do
+        local success, err = pcall(function()
+            if not collectEggs() then
+                attackNPCs()
+            end
+        end)
+        
+        if not success then
+            warn("Ошибка в главном цикле: " .. tostring(err))
+        end
+        
+        task.wait(0.1)
+    end
+end
+
+-- === ОБРАБОТЧИКИ СОБЫТИЙ ===
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == CONFIG.CONTROLS.SEARCH_TOGGLE then
+        CONFIG.isSearching = not CONFIG.isSearching
+        
+        if CONFIG.isSearching then
+            print("Автопоиск и атака активированы. Нажмите P для остановки")
+            task.spawn(mainLoop)
+        else
+            print("Автопоиск и атака остановлены")
+            local hrp = getHRP()
+            if hrp then hrp.Velocity = Vector3.new() end
+        end
+        
+    elseif input.KeyCode == CONFIG.CONTROLS.NOCLIP_TOGGLE then
+        CONFIG.NOCLIP_ENABLED = not CONFIG.NOCLIP_ENABLED
+        
+        if CONFIG.NOCLIP_ENABLED then
+            enableNoclip()
+            print("NoClip включен")
+        else
+            disableNoclip()
+            print("NoClip выключен")
+        end
+        
+    elseif input.KeyCode == CONFIG.CONTROLS.EQUIP_TOGGLE then
+        isRunning = not isRunning
+        print(isRunning and "🟢 [Auto-Equip] Включено" or "🔴 [Auto-Equip] Выключено")
+        
+    elseif input.KeyCode == CONFIG.CONTROLS.AUTO_ATTACK_TOGGLE then
+        isActive = not isActive
+        print(isActive and "Auto Attack ON" or "Auto Attack OFF")
+    end
+end)
+
+-- === ИНИЦИАЛИЗАЦИЯ ПРИ ЗАПУСКЕ ===
 task.spawn(function()
-    -- Удаление Jeep объектов
-    local mapFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"]:FindFirstChild("Map")
+    local mapFolder = gameFolder and gameFolder:FindFirstChild("Map")
     if mapFolder then
         safeDelete(mapFolder, "Jeep")
     else
         warn("Папка '#GAME.Map' не найдена!")
     end
-
-    -- Удаление комнат
+    
     local housePath = mapFolder and mapFolder:FindFirstChild("Houses") and 
                      mapFolder.Houses:FindFirstChild("Blue House")
+    
     local roomsToDelete = {
         "LivingRoom", "Kitchen", "Small Bedroom",
         "WorkRoom", "Bathroom", "Big Bedroom"
     }
+    
     safeDeleteRooms(housePath, roomsToDelete)
-
-    -- Удаление Exterior и Backyard
+    
     if housePath then
         local exterior = housePath:FindFirstChild("Exterior")
         if exterior then
             pcall(function() exterior:Destroy() end)
         end
+        
         local backyard = mapFolder.Houses:FindFirstChild("Backyard")
         if backyard then
             pcall(function() backyard:Destroy() end)
         end
     end
+    
     print("Скрипт удаления завершен!")
 end)
 
-wait(1)
-
-local Player = game:GetService("Players").LocalPlayer
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
-local TOGGLE_KEY = Enum.KeyCode.Y -- Клавиша для включения/выключения
-local TOOL_PRIORITY = {
-    "Maus",       -- Высший приоритет
-    "M1 Abrams",       -- Второй по важности
-    "Pine Tree",     -- Средний приоритет
-    "King Slayer",       -- Резервный
-}
-
-local isRunning = true
-
--- Функция для поиска и экипировки инструмента по приоритету
-local function EquipTool()
-    if not isRunning then return end
-
-    local Character = Player.Character or Player.CharacterAdded:Wait()
-    local Backpack = Player:FindFirstChildOfClass("Backpack")
-    local Humanoid = Character:FindFirstChildOfClass("Humanoid")
-
-    if not Backpack or not Humanoid then return end
-
-    -- Перебираем инструменты по приоритету
-    for _, toolName in ipairs(TOOL_PRIORITY) do
-        local Tool = Backpack:FindFirstChild(toolName) or Character:FindFirstChild(toolName)
-
-        if Tool and Tool:IsA("Tool") then
-            if not Character:FindFirstChild(Tool.Name) then
-                Humanoid:EquipTool(Tool)
-                print("🔹 [Auto-Equip] Взят: " .. Tool.Name)
-            end
-            return -- Берём первый найденный подходящий инструмент и выходим
-        end
-    end
-end
-
--- Обработка респавна
-Player.CharacterAdded:Connect(function()
-    task.wait(2) -- Даем время загрузиться
+-- === ОБРАБОТЧИКИ РЕСПАВНА ===
+player.CharacterAdded:Connect(function()
+    task.wait(2)
     if isRunning then
         EquipTool()
     end
 end)
 
--- Проверяем инвентарь каждые 1.5 секунды
+-- === ПЕРВОНАЧАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ ===
+enableNoclip()
+print("Постоянный NoClip активирован (включен по умолчанию)")
+print("Нажмите N для отключения NoClip")
+print("Скорость полёта к яйцам: " .. CONFIG.EGG_SPEED)
+print("Автопоиск и атака: Нажмите P для старта/остановки")
+print("🛠 [Auto-Equip] Готово! Нажми Y для включения/выключения.")
+print("Auto Attack: Нажмите T для включения/выключения")
+
+-- === ЗАГРУЗКА ДОПОЛНИТЕЛЬНЫХ СКРИПТОВ ===
 RunService.Heartbeat:Connect(function()
     if isRunning then
         EquipTool()
@@ -461,171 +497,132 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Включение/выключение по клавише Y
-UIS.InputBegan:Connect(function(Input, _)
-    if Input.KeyCode == TOGGLE_KEY then
-        isRunning = not isRunning
-        print(isRunning and "🟢 [Auto-Equip] Включено" or "🔴 [Auto-Equip] Выключено")
-    end
-end)
-
--- Первый запуск
+updateEggSpeed()
 EquipTool()
-print("🛠 [Auto-Equip] Готово! Нажми Y для включения/выключения.")
 
-wait(1)
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ArgetnarYT/scripts/main/AntiAfk2.lua"))()
-
-wait(1)
-
---[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
-]]
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
-
-local LocalPlayer = Players.LocalPlayer
-if not LocalPlayer then
-	Players.PlayerAdded:Wait()
-	LocalPlayer = Players.LocalPlayer
-end
-
-local Camera = Workspace.CurrentCamera
-local Mouse = LocalPlayer:GetMouse() -- Retained as it might be needed for other game interactions, though not directly by this script's core logic.
-
-local gameFolder = Workspace:WaitForChild("#GAME", 10)
-local foldersFolder = gameFolder and gameFolder:WaitForChild("Folders", 5)
-local humanoidFolder = foldersFolder and foldersFolder:WaitForChild("HumanoidFolder", 5)
-local mainFolder = humanoidFolder and humanoidFolder:WaitForChild("NPCFolder", 5) -- Your target folder
-
-local eventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
-local remote = eventsFolder and eventsFolder:WaitForChild("MainAttack", 5)
-
-if not mainFolder then
-	warn("Auto Attack: Could not find NPCFolder at expected path.")
-	return
-end
-if not remote then
-	warn("Auto Attack: Could not find MainAttack RemoteEvent.")
-	return
-end
-
-
-local isActive = false
-
-local priorityNames1 = { "Amethyst", "Ruby", "Emerald", "Diamond", "Golden", "Silver" }
-local priorityNames2 = { "Werewolf", "Berend" }
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.T then
-		isActive = not isActive
-		print(isActive and "Auto Attack ON" or "Auto Attack OFF")
-	end
+-- === ЗАГРУЗКА ДОПОЛНИТЕЛЬНЫХ СКРИПТОВ ===
+spawn(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/ArgetnarYT/scripts/main/AntiAfk2.lua "))()
 end)
 
-local function getDeadNPCs()
-	local deadList = {}
-	if not mainFolder then return deadList end
-
-	for _, npc in ipairs(mainFolder:GetChildren()) do
-		if npc:IsA("Model") then
-			local humanoid = npc:FindFirstChildOfClass("Humanoid")
-			-- Check if Humanoid exists AND (Health is 0 or less OR its name contains "Dead")
-			if humanoid and (humanoid.Health <= 0 or string.find(humanoid.Name, "Dead", 1, true)) then
-				table.insert(deadList, npc)
-			end
-		end
-	end
-	return deadList
-end
-
-local function getPriorityTarget(npcList)
-	local function findByPriority(list, keywords)
-		for _, keyword in ipairs(keywords) do
-			for _, npc in ipairs(list) do
-				if npc.Name:find(keyword, 1, true) then
-					return npc
-				end
-			end
-		end
-		return nil
-	end
-
-	local target = findByPriority(npcList, priorityNames1)
-	if target then return target end
-
-	target = findByPriority(npcList, priorityNames2)
-	if target then return target end
-
-	if #npcList > 0 then
-		return npcList[math.random(1, #npcList)]
-	end
-
-	return nil
-end
-
-local function getValidBodyParts(model)
-	local validParts = {}
-	for _, part in ipairs(model:GetDescendants()) do
-		if part:IsA("BasePart") then
-			local isGettingEaten = part:GetAttribute("IsGettingEaten")
-			if not isGettingEaten then
-				table.insert(validParts, part)
-			end
-		end
-	end
-	return validParts
-end
-
-local USE_DEVIATION = true
-local MAX_DEVIATION_STUDS = 0.5
-
-RunService.Heartbeat:Connect(function()
-	if not isActive then return end
-
-	local deadNPCList = getDeadNPCs()
-	if #deadNPCList == 0 then return end
-
-	local targetNpc = getPriorityTarget(deadNPCList)
-	if not targetNpc or not targetNpc.Parent then return end
-
-	local validParts = getValidBodyParts(targetNpc)
-	if #validParts == 0 then
-		return
-	end
-
-	local bodyPart = validParts[math.random(1, #validParts)]
-
-	local origin = Camera.CFrame.Position
-
-	local targetPosition = bodyPart.Position
-
-	if USE_DEVIATION and MAX_DEVIATION_STUDS > 0 then
-		local offsetX = (math.random() - 0.5) * 2 * MAX_DEVIATION_STUDS
-		local offsetY = (math.random() - 0.5) * 2 * MAX_DEVIATION_STUDS
-		local offsetZ = (math.random() - 0.5) * 2 * MAX_DEVIATION_STUDS
-		targetPosition = targetPosition + Vector3.new(offsetX, offsetY, offsetZ)
-	end
-
-	local direction = (targetPosition - origin).Unit
-
-    if direction.X ~= direction.X or direction.Y ~= direction.Y or direction.Z ~= direction.Z then
-        warn("Calculated NaN direction! Falling back to LookVector. Origin:", origin, "Target:", targetPosition)
-        direction = Camera.CFrame.LookVector
+-- === АВТОАТАКА МЕРТВЫХ NPC ===
+spawn(function()
+    local gameFolder = Workspace:WaitForChild("#GAME", 10)
+    local foldersFolder = gameFolder and gameFolder:WaitForChild("Folders", 5)
+    local humanoidFolder = foldersFolder and foldersFolder:WaitForChild("HumanoidFolder", 5)
+    local mainFolder = humanoidFolder and humanoidFolder:WaitForChild("NPCFolder", 5)
+    local eventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
+    local remote = eventsFolder and eventsFolder:WaitForChild("MainAttack", 5)
+    
+    if not mainFolder then
+        warn("Auto Attack: Could not find NPCFolder at expected path.")
+        return
     end
-
-	local args = {
-		[1] = {
-			["AN"] = "Eat",
-			["D"] = direction,
-			["O"] = origin,
-			["FBP"] = bodyPart
-		}
-	}
-	remote:FireServer(unpack(args))
+    
+    if not remote then
+        warn("Auto Attack: Could not find MainAttack RemoteEvent.")
+        return
+    end
+    
+    local isActive = false
+    
+    local function getDeadNPCs()
+        local deadList = {}
+        if not mainFolder then return deadList end
+        
+        for _, npc in ipairs(mainFolder:GetChildren()) do
+            if npc:IsA("Model") then
+                local humanoid = npc:FindFirstChildOfClass("Humanoid")
+                if humanoid and (humanoid.Health <= 0 or string.find(humanoid.Name, "Dead", 1, true)) then
+                    table.insert(deadList, npc)
+                end
+            end
+        end
+        
+        return deadList
+    end
+    
+    local function getPriorityTarget(npcList)
+        local function findByPriority(list, keywords)
+            for _, keyword in ipairs(keywords) do
+                for _, npc in ipairs(list) do
+                    if npc.Name:find(keyword, 1, true) then
+                        return npc
+                    end
+                end
+            end
+            return nil
+        end
+        
+        local target = findByPriority(npcList, CONFIG.PRIORITY_TARGETS.priority1)
+        if target then return target end
+        
+        target = findByPriority(npcList, CONFIG.PRIORITY_TARGETS.priority2)
+        if target then return target end
+        
+        if #npcList > 0 then
+            return npcList[math.random(1, #npcList)]
+        end
+        
+        return nil
+    end
+    
+    local function getValidBodyParts(model)
+        local validParts = {}
+        for _, part in ipairs(model:GetDescendants()) do
+            if part:IsA("BasePart") then
+                local isGettingEaten = part:GetAttribute("IsGettingEaten")
+                if not isGettingEaten then
+                    table.insert(validParts, part)
+                end
+            end
+        end
+        return validParts
+    end
+    
+    local USE_DEVIATION = true
+    local MAX_DEVIATION_STUDS = 0.5
+    
+    RunService.Heartbeat:Connect(function()
+        if not isActive then return end
+        
+        local deadNPCList = getDeadNPCs()
+        if #deadNPCList == 0 then return end
+        
+        local targetNpc = getPriorityTarget(deadNPCList)
+        if not targetNpc or not targetNpc.Parent then return end
+        
+        local validParts = getValidBodyParts(targetNpc)
+        if #validParts == 0 then
+            return
+        end
+        
+        local bodyPart = validParts[math.random(1, #validParts)]
+        local origin = Workspace.CurrentCamera.CFrame.Position
+        local targetPosition = bodyPart.Position
+        
+        if USE_DEVIATION and MAX_DEVIATION_STUDS > 0 then
+            local offsetX = (math.random() - 0.5) * 2 * MAX_DEVIATION_STUDS
+            local offsetY = (math.random() - 0.5) * 2 * MAX_DEVIATION_STUDS
+            local offsetZ = (math.random() - 0.5) * 2 * MAX_DEVIATION_STUDS
+            targetPosition = targetPosition + Vector3.new(offsetX, offsetY, offsetZ)
+        end
+        
+        local direction = (targetPosition - origin).Unit
+        if direction.X ~= direction.X or direction.Y ~= direction.Y or direction.Z ~= direction.Z then
+            warn("Calculated NaN direction! Falling back to LookVector. Origin:", origin, "Target:", targetPosition)
+            direction = Workspace.CurrentCamera.CFrame.LookVector
+        end
+        
+        local args = {
+            [1] = {
+                ["AN"] = "Eat",
+                ["D"] = direction,
+                ["O"] = origin,
+                ["FBP"] = bodyPart
+            }
+        }
+        
+        remote:FireServer(unpack(args))
+    end)
 end)
