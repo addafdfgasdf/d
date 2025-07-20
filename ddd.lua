@@ -32,7 +32,7 @@ local EGG_PRIORITY_GROUPS = {
     },
     -- Группа 2 (средний приоритет)
     {
-        "Nasty Egg", "SigmaBloxian Egg", "Raffie Egg"
+        "Nasty Egg", "SigmaBloxian Egg", "Raffie Egg", "Diamond Egg"
     },
     -- Группа 3 (низкий приоритет, по желанию)
     {
