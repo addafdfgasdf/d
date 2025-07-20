@@ -27,11 +27,16 @@ local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"].Fo
 -- === Приоритеты яиц ===
 local EGG_PRIORITY_GROUPS = {
     -- Группа 1 (высший приоритет)
-    {"Amethyst Egg", "Ruby Egg", "Emerald Egg", "BULL Egg", "BULLKER Egg", "Banana Egg", "Bananade Egg", "Berend Egg", "Big Egg", "Boeman Egg", "Bombardier Egg", "Bunny Egg", "Buoyant Egg", "Cheese Egg", "Chicken Egg", "Delicious Egg", "Elf Egg", "Flying Egg", "Fur Egg", "Ginger Egg", "Headless Egg", "Jack Egg", "Jumperino Egg", "Mighty Egg", "Moai Egg", "Monster Egg", "Noob Egg", "OOOOOMEGA EGG", "Old Egg", "Party Egg", "Pouwk Egg", "Pouwker Egg", "Primo Egg", "Raffle Egg", "Santa Egg", "Skeleton Egg", "Werewolf Egg", "Yoss Egg", "BOSS Egg", "Baby Egg", "Bas Egg", "Basic Egg", "Bigger Egg", "Biggest Egg", "Biggest Bigger Egg", "Biggestest Egg", "Bomb Egg", "Burnt Egg", "Co Egg", "Cracked Egg", "Dark Egg", "Diamond Egg", "Enraged Egg", "Error Egg", "Fat Egg", "Fatter Egg", "Fattest Egg", "Ghost Egg", "Golden Egg", "Greasy Egg", "Happy Egg", "Hateful Egg", "Hellfire Egg", "Invincible Egg", "Invisible Egg", "Mega Egg", "Metal Egg", "Micro Egg", "Nano Egg", "Nasty Egg", "Not Egg", "Nuke Egg", "Paper Egg", "Poop Egg", "R6 Egg", "Rock Egg", "Rotten Egg", "Rusty Egg", "SigmaBloxian Egg", "Silver Egg", "Skinny Egg", "Small Egg", "Smaller Egg", "Smallest Egg", "Squashed Egg", "Squished Egg", "Stinky Egg", "Tall Egg", "Taller Egg", "Tallest Egg", "Turd Egg", "Wide Egg", "Zombie Egg", "Werewolf Egg"
+    { "Burnt Egg", "Berend Egg", "Metal Egg", "Primo Egg", "Co Egg", "R6 Egg", "Hellfire Egg", "Enraged Egg", "Biggester Egg"
     },
     -- Группа 2 (средний приоритет)
     {
-        "gandon Egg"
+        "Amethyst Egg", "Ruby Egg", "Emerald Egg", "BULL Egg", "BULLKER Egg", "Banana Egg", "Bananade Egg", "Big Egg", "Boeman Egg", "Bombardier Egg", "Bunny Egg", "Buoyant Egg", "Cheese Egg", 
+  "Delicious Egg", "Elf Egg", "Flying Egg", "Fur Egg", "Ginger Egg", "Headless Egg", "Jack Egg", "Jumperino Egg", "Mighty Egg", "Moai Egg", "Noob Egg", "Old Egg", "Party Egg", "Pouwk Egg", "Pouwker Egg", "Raffle Egg", "Santa Egg", "Skeleton Egg", "Yoss Egg", "BOSS Egg", "Baby Egg", "Bas Egg", 
+  "Bomb Egg", "Cracked Egg", "Dark Egg", "Diamond Egg", "Error Egg", "Fatter Egg", "Fattest Egg", "Ghost Egg", "Golden Egg", "Greasy Egg", "Happy Egg", "Hateful Egg", "Invincible Egg", "Invisible Egg", "Mega Egg", "Micro Egg", "Nano Egg", "Nasty Egg", "Not Egg", "Nuke Egg", "Paper Egg", "Poop Egg", "R6 Egg", 
+  "Rotten Egg", "Rusty Egg", "SigmaBloxian Egg", "Silver Egg", "Skinny Egg", 
+  "Smallest Egg", "Stinky Egg", 
+  "Turd Egg", "Wide Egg", "Zombie Egg", "Werewolf Egg"
     },
     -- Группа 3 (низкий приоритет, по желанию)
     {
