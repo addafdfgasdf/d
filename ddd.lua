@@ -28,13 +28,11 @@ local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"].Fo
 local EGG_PRIORITY_GROUPS = {
     -- Группа 1 (высший приоритет)
     {
-        "Amethyst Egg",
-        "Ruby Egg",
-        "Emerald Egg"
+        "Amethyst Egg", "Ruby Egg", "Emerald Egg"
     },
     -- Группа 2 (средний приоритет)
     {
-        "Nasty Egg"
+        "Nasty Egg", "SigmaBloxian Egg", "Raffie Egg"
     },
     -- Группа 3 (низкий приоритет, по желанию)
     {
