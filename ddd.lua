@@ -17,10 +17,11 @@ local NOCLIP_ENABLED = true
 local noclipConnection = nil
 
 -- === Пути ===
-local NPCFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"]:FindFirstChild("Folders") and 
-                 workspace["#GAME"].Folders:FindFirstChild("HumanoidFolder") and 
+local NPCFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"].Folders and 
+                 workspace["#GAME"].Folders.HumanoidFolder and 
                  workspace["#GAME"].Folders.HumanoidFolder:FindFirstChild("NPCFolder")
-local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"]:FindFirstChild("Folders") and 
+
+local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"].Folders and 
                     workspace["#GAME"].Folders:FindFirstChild("DumpFolder") or workspace
 
 -- === Яйца ===
@@ -30,23 +31,52 @@ local eggNames = {
 
 -- === Скорость ===
 local speedCheckCount = 0
-local MAX_SPEED_CHECKS = 3
+local MAX_SPEED_CHECKS = 10
+local speedHistory = {} -- Хранение всех собранных значений скорости
 
--- === Функция определения скорости ===
+-- === Функция определения скорости (обновлённая) ===
 local function updateEggSpeed()
     if speedCheckCount >= MAX_SPEED_CHECKS then return end
+
     local playerHumanoidFolder = workspace["#GAME"] and workspace["#GAME"].Folders and 
                                  workspace["#GAME"].Folders.HumanoidFolder and 
                                  workspace["#GAME"].Folders.HumanoidFolder:FindFirstChild("PlayerFolder") and 
                                  workspace["#GAME"].Folders.HumanoidFolder.PlayerFolder:FindFirstChild(player.Name)
+
     if playerHumanoidFolder and playerHumanoidFolder:FindFirstChild("Humanoid") then
         local baseSpeed = playerHumanoidFolder.Humanoid.WalkSpeed
-        EGG_SPEED = math.max(1, baseSpeed - 10)
+        table.insert(speedHistory, baseSpeed)
         speedCheckCount += 1
-        print("[" .. speedCheckCount .. "/" .. MAX_SPEED_CHECKS .. "] Установлена скорость полёта к яйцам: " .. EGG_SPEED)
+        print("[" .. speedCheckCount .. "/" .. MAX_SPEED_CHECKS .. "] Записана скорость: " .. baseSpeed)
+
+        if speedCheckCount == MAX_SPEED_CHECKS then
+            -- Подсчет частоты встречаемости скоростей
+            local frequency = {}
+            for _, speed in ipairs(speedHistory) do
+                if frequency[speed] then
+                    frequency[speed] = frequency[speed] + 1
+                else
+                    frequency[speed] = 1
+                end
+            end
+
+            -- Найти наиболее частую скорость
+            local mostFrequentSpeed = nil
+            local maxCount = 0
+            for speed, count in pairs(frequency) do
+                if count > maxCount or (count == maxCount and speed > mostFrequentSpeed) then
+                    mostFrequentSpeed = speed
+                    maxCount = count
+                end
+            end
+
+            -- Установить итоговую скорость
+            EGG_SPEED = math.max(1, mostFrequentSpeed)
+            print("✅ Установлена итоговая скорость полёта к яйцам: " .. EGG_SPEED)
+        end
     else
         warn("Не удалось найти персонажа игрока для определения скорости")
-        EGG_SPEED = 10
+        EGG_SPEED = 10 -- Резервная скорость
     end
 end
 
@@ -338,7 +368,6 @@ task.spawn(function()
     else
         warn("Папка '#GAME.Map' не найдена!")
     end
-
     local housePath = mapFolder and mapFolder:FindFirstChild("Houses") and 
                      mapFolder.Houses:FindFirstChild("Blue House")
     local roomsToDelete = {
@@ -346,7 +375,6 @@ task.spawn(function()
         "WorkRoom", "Bathroom", "Big Bedroom"
     }
     safeDeleteRooms(housePath, roomsToDelete)
-
     if housePath then
         local exterior = housePath:FindFirstChild("Exterior")
         if exterior then
@@ -369,7 +397,6 @@ local TOOL_PRIORITY = {
     "King Slayer",
 }
 local isRunning = true
-
 local function EquipTool()
     if not isRunning then return end
     local Character = player.Character or player.CharacterAdded:Wait()
@@ -413,7 +440,7 @@ EquipTool()
 print("🛠 [Auto-Equip] Готово! Нажми Y для включения/выключения.")
 
 -- === Anti-AFK ===
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ArgetnarYT/scripts/main/AntiAfk2.lua "))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ArgetnarYT/scripts/main/AntiAfk2.lua  "))()
 
 -- === Включение NoClip при запуске ===
 enableNoclip()
