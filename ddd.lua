@@ -26,7 +26,7 @@ local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"]:Fi
 
 -- Список всех возможных яиц
 local eggNames = {
-    "Nasty Egg", "Basic Egg"
+    "Nasty Egg", "SigmaBloxian Egg", "Raffie Egg", "Turd Egg"
 }
 
 -- Счётчик проверок скорости
