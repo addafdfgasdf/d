@@ -36,7 +36,7 @@ local EGG_PRIORITY_GROUPS = {
   "Dark Egg", "Diamond Egg", "Error Egg", "Fattest Egg", "Ghost Egg", "Golden Egg", "Greasy Egg", "Happy Egg", "Hateful Egg", "Invincible Egg", "Invisible Egg", "Nano Egg", "Nasty Egg", "Not Egg", "Nuke Egg", "Paper Egg", "R6 Egg", 
   "Rotten Egg", "Rusty Egg", "SigmaBloxian Egg", "Silver Egg", "Skinny Egg", 
   "Smallest Egg",
-  "Turd Egg", "Wide Egg", "Zombie Egg", "Werewolf Egg"
+  "Turd Egg", "Wide Egg", "Zombie Egg", "Werewolf Egg", "Bomb Egg"
     },
     -- Группа 3 (низкий приоритет, по желанию)
     {
