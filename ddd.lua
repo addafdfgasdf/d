@@ -20,13 +20,26 @@ local noclipConnection = nil
 local NPCFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"].Folders and 
                  workspace["#GAME"].Folders.HumanoidFolder and 
                  workspace["#GAME"].Folders.HumanoidFolder:FindFirstChild("NPCFolder")
-
 local targetFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"].Folders and 
                     workspace["#GAME"].Folders:FindFirstChild("DumpFolder") or workspace
 
--- === Яйца ===
-local eggNames = {
-    "Nasty Egg", "Amethyst Egg", "Ruby Egg", "Emerald Egg"
+-- === Приоритеты яиц ===
+local EGG_PRIORITY_GROUPS = {
+    -- Группа 1 (высший приоритет)
+    {
+        "Amethyst Egg",
+        "Ruby Egg",
+        "Emerald Egg"
+    },
+    -- Группа 2 (средний приоритет)
+    {
+        "Nasty Egg"
+    },
+    -- Группа 3 (низкий приоритет, по желанию)
+    {
+        -- "Common Egg",
+        -- "Basic Egg"
+    }
 }
 
 -- === Скорость ===
@@ -37,18 +50,15 @@ local speedHistory = {} -- Хранение всех собранных знач
 -- === Функция определения скорости (обновлённая) ===
 local function updateEggSpeed()
     if speedCheckCount >= MAX_SPEED_CHECKS then return end
-
     local playerHumanoidFolder = workspace["#GAME"] and workspace["#GAME"].Folders and 
                                  workspace["#GAME"].Folders.HumanoidFolder and 
                                  workspace["#GAME"].Folders.HumanoidFolder:FindFirstChild("PlayerFolder") and 
                                  workspace["#GAME"].Folders.HumanoidFolder.PlayerFolder:FindFirstChild(player.Name)
-
     if playerHumanoidFolder and playerHumanoidFolder:FindFirstChild("Humanoid") then
         local baseSpeed = playerHumanoidFolder.Humanoid.WalkSpeed
         table.insert(speedHistory, baseSpeed)
         speedCheckCount += 1
         print("[" .. speedCheckCount .. "/" .. MAX_SPEED_CHECKS .. "] Записана скорость: " .. baseSpeed)
-
         if speedCheckCount == MAX_SPEED_CHECKS then
             -- Подсчет частоты встречаемости скоростей
             local frequency = {}
@@ -59,7 +69,6 @@ local function updateEggSpeed()
                     frequency[speed] = 1
                 end
             end
-
             -- Найти наиболее частую скорость
             local mostFrequentSpeed = nil
             local maxCount = 0
@@ -69,14 +78,13 @@ local function updateEggSpeed()
                     maxCount = count
                 end
             end
-
             -- Установить итоговую скорость
             EGG_SPEED = math.max(1, mostFrequentSpeed)
-            print("✅ Установлена итоговая скорость полёта к яйцам: " .. EGG_SPEED)
+            print("Установлена итоговая скорость полёта к яйцам: " .. EGG_SPEED)
         end
     else
         warn("Не удалось найти персонажа игрока для определения скорости")
-        EGG_SPEED = 10 -- Резервная скорость
+        EGG_SPEED = 50 -- Резервная скорость
     end
 end
 
@@ -263,18 +271,20 @@ local function attackNPCs()
     end
 end
 
--- === Сбор яиц ===
+-- === Сбор яиц с приоритетами ===
 local function collectEggs()
     if not isSearching then return false end
-    local hrp = getHRP()
-    if not hrp then return false end
-    for _, eggName in ipairs(eggNames) do
-        if not isSearching then break end
-        local egg = findEgg(eggName)
-        if egg then
-            if autoCollectEgg(egg) then
-                task.wait(0.5)
-                return true
+    -- Перебор по уровням приоритета
+    for _, priorityGroup in ipairs(EGG_PRIORITY_GROUPS) do
+        for _, eggName in ipairs(priorityGroup) do
+            if not isSearching then return false end
+            local egg = findEgg(eggName)
+            if egg then
+                print("🎯 Найдено яйцо с приоритетом: " .. eggName)
+                if autoCollectEgg(egg) then
+                    task.wait(0.5)
+                    return true
+                end
             end
         end
     end
@@ -440,9 +450,10 @@ EquipTool()
 print("🛠 [Auto-Equip] Готово! Нажми Y для включения/выключения.")
 
 -- === Anti-AFK ===
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ArgetnarYT/scripts/main/AntiAfk2.lua  "))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ArgetnarYT/scripts/main/AntiAfk2.lua   "))()
 
 -- === Включение NoClip при запуске ===
+
 enableNoclip()
 print("Постоянный NoClip активирован (включен по умолчанию)")
 print("Нажмите N для отключения NoClip")
@@ -450,6 +461,8 @@ print("Скорость полёта к яйцам: " .. EGG_SPEED)
 print("Автопоиск и атака: Нажмите P для старта/остановки")
 
 wait(1)
+
+-- === Остальная часть скрипта (например, Auto Attack) ===
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
