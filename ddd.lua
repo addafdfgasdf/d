@@ -619,3 +619,76 @@ RunService.Heartbeat:Connect(function()
 	}
 	remote:FireServer(unpack(args))
 end)
+
+
+wait(1)
+
+-- Freeze Script (работает после смерти)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local function freezePlayer(player)
+    local character = player.Character or player.CharacterAdded:Wait()
+    
+    -- Функция для применения Freeze
+    local function applyFreeze(char)
+        if not char then return end
+        
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Anchored = true  -- Замораживаем часть
+                part.Velocity = Vector3.new(0, 0, 0)
+                part.RotVelocity = Vector3.new(0, 0, 0)
+            end
+        end
+    end
+    
+    -- Применяем Freeze к текущему персонажу
+    applyFreeze(character)
+    
+    -- Следим за изменением персонажа (после респауна)
+    player.CharacterAdded:Connect(function(newCharacter)
+        wait(0.1) -- Небольшая задержка для загрузки персонажа
+        applyFreeze(newCharacter)
+    end)
+    
+    -- Непрерывная проверка (дополнительная страховка)
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        local currentChar = player.Character
+        if currentChar then
+            for _, part in pairs(currentChar:GetDescendants()) do
+                if part:IsA("BasePart") and not part.Anchored then
+                    part.Anchored = true
+                    part.Velocity = Vector3.new(0, 0, 0)
+                    part.RotVelocity = Vector3.new(0, 0, 0)
+                end
+            end
+        end
+    end)
+    
+    -- Возвращаем функцию для остановки Freeze
+    return function()
+        if connection then
+            connection:Disconnect()
+        end
+    end
+end
+
+-- Пример использования:
+-- Заморозить конкретного игрока
+local targetPlayer = Players:FindFirstChild("PlayerName") -- Замените на имя игрока
+if targetPlayer then
+    local unfreezeFunction = freezePlayer(targetPlayer)
+    -- unfreezeFunction() -- Вызовите эту функцию для разморозки
+end
+
+-- Или заморозить всех игроков
+for _, player in pairs(Players:GetPlayers()) do
+    freezePlayer(player)
+end
+
+-- Автоматически замораживать новых игроков
+Players.PlayerAdded:Connect(function(player)
+    freezePlayer(player)
+end)
