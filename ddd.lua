@@ -692,3 +692,16 @@ end
 Players.PlayerAdded:Connect(function(player)
     freezePlayer(player)
 end)
+
+wait(1)
+
+-- Ждём необходимые сервисы
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Events = ReplicatedStorage:WaitForChild("Events")
+local ClickEvent = Events:WaitForChild("Click")
+
+-- Запускаем бесконечный цикл, который вызывает событие каждые 0.1 секунды
+while true do
+    ClickEvent:FireServer()
+    task.wait(0.001) 
+end
