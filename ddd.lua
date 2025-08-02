@@ -17,7 +17,7 @@ local MAX_WAIT_TIME = 25
 local NOCLIP_ENABLED = true
 local noclipConnection = nil
 
--- === Пути ===
+-- === Пути === 
 local NPCFolder = workspace:FindFirstChild("#GAME") and workspace["#GAME"].Folders and 
                  workspace["#GAME"].Folders.HumanoidFolder and 
                  workspace["#GAME"].Folders.HumanoidFolder:FindFirstChild("NPCFolder")
