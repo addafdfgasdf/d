@@ -703,5 +703,5 @@ local ClickEvent = Events:WaitForChild("Click")
 -- Запускаем бесконечный цикл, который вызывает событие каждые 0.1 секунды
 while true do
     ClickEvent:FireServer()
-    task.wait(0.01) 
+    task.wait(0.005) 
 end
