@@ -1,3 +1,5 @@
+-- by dolbaeb
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
