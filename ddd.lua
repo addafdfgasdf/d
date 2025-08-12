@@ -509,7 +509,7 @@ end
 
 local isActive = false
 
-local priorityNames1 = { "Amethyst", "Buoyant", "Party", "Delicious" }
+local priorityNames1 = { "Amethyst", "Buoyant", "Party", "Delicious", "Primo" }
 local priorityNames2 = { "Golden", "Ruby", "Emerald", "Diamond", "BULL", }
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
